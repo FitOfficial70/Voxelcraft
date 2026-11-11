@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pixel Texture Designer</title>
+    <style>
+        body { font-family: monospace; background: #222; color: #fff; padding: 20px; text-align: center; }
+        canvas { border: 4px solid #444; background: #333; image-rendering: pixelated; margin: 20px auto; display: block; }
+        .controls { background: #111; padding: 16px; border-radius: 8px; display: inline-block; text-align: left; }
+        label { display: inline-block; min-width: 125px; font-weight: bold; color: #f1c40f; margin: 6px 0; }
+        input, select, button { font: inherit; padding: 6px; }
+        button { display: block; margin-top: 14px; cursor: pointer; }
+        pre { background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; color: #2ecc71; text-align: left; }
+        .note { max-width: 650px; margin: 0 auto; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <h1>Custom Pixel Texture Generator</h1>
+    <p class="note">Choose whether this image is a block face or an item icon. Edit the pixel map and palette in the code, then download the PNG and add its path to <code>TEXTURE_LIBRARY</code> in <code>index.html</code>.</p>
+
+    <canvas id="textureCanvas"></canvas>
+
+    <div class="controls">
+        <h3>Texture target</h3>
+        <div><label for="texture-kind">Texture kind:</label>
+            <select id="texture-kind">
+                <option value="block">Block face</option>
+                <option value="item">Item icon</option>
+            </select>
+        </div>
+        <div><label for="texture-name">Name:</label>
+            <input id="texture-name" value="grass" maxlength="24">
+        </div>
+        <div id="face-control"><label for="block-face">Block face:</label>
+            <select id="block-face">
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+                <option value="north">North</option>
+                <option value="south">South</option>
+                <option value="east">East</option>
+                <option value="west">West</option>
+            </select>
+        </div>
+        <ul>
+            <li><strong>Download filename:</strong> <span id="ui-filename"></span></li>
+            <li><strong>Display size:</strong> <span id="ui-size"></span> px</li>
+            <li><strong>Resolution:</strong> <span id="ui-res"></span>x grid</li>
+        </ul>
+        <button id="download-texture">Download PNG</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('textureCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        // === TEXTURE CONFIGURATION ===
+        // Choose 16, 32, or 64 and make PIXEL_DATA match that grid size.
+        const TEXTURE_RESOLUTION = 16;
+        const DISPLAY_SIZE = 256;
+        const PALETTE = {
+            'R': '#e74c3c',
+            'D': '#c0392b',
+            'W': '#ffffff',
+            'B': '#795548',
+            'G': '#2ecc71',
+            'X': 'transparent'
+        };
+
+        // Replace this 16x16 example map with the pixel art for this texture.
+        // Unmapped characters and X are transparent.
+        const PIXEL_DATA = [
+            "XXXXXXGGXXXXXXXX",
+            "XXXXXGGGXXXXXXXX",
+            "XXXXXXBXXXXXXXXX",
+            "XXXXXBBXXXXXXXXX",
+            "XXXXRRRRRXXXXXXX",
+            "XXXYRRWRRRRXXXXX",
+            "XXXYRWWWRRRRXXXX",
+            "XXXYRRWRRRRRRXXX",
+            "XXXYRRRRRRRRRXXX",
+            "XXXYRRRRRRRRRXXX",
+            "XXXXRRRRRRRRXXXX",
+            "XXXXDRRRRRRDXXXX",
+            "XXXXXDRRRRDDXXXX",
+            "XXXXXXDDDDXXXXXX",
+            "XXXXXXXXXXXXXXXX",
+            "XXXXXXXXXXXXXXXX"
+        ];
+
+        const kindInput = document.getElementById('texture-kind');
+        const nameInput = document.getElementById('texture-name');
+        const faceInput = document.getElementById('block-face');
+        const faceControl = document.getElementById('face-control');
+        const filenameLabel = document.getElementById('ui-filename');
+
+        function textureFilename() {
+            const cleanName = nameInput.value.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-') || 'texture';
+            return kindInput.value === 'block'
+                ? `${cleanName}-${faceInput.value}.png`
+                : `${cleanName}-item.png`;
+        }
+
+        function drawTexture() {
+            canvas.width = TEXTURE_RESOLUTION;
+            canvas.height = TEXTURE_RESOLUTION;
+            canvas.style.width = `${DISPLAY_SIZE}px`;
+            canvas.style.height = `${DISPLAY_SIZE}px`;
+            document.getElementById('ui-size').textContent = DISPLAY_SIZE;
+            document.getElementById('ui-res').textContent = TEXTURE_RESOLUTION;
+            faceControl.style.display = kindInput.value === 'block' ? 'block' : 'none';
+            filenameLabel.textContent = textureFilename();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < TEXTURE_RESOLUTION; y++) {
+                const row = PIXEL_DATA[y];
+                if (!row) continue;
+                for (let x = 0; x < TEXTURE_RESOLUTION; x++) {
+                    const color = PALETTE[row[x]];
+                    if (color && color !== 'transparent') {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+        }
+
+        document.getElementById('download-texture').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = textureFilename();
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+        [kindInput, nameInput, faceInput].forEach(input => input.addEventListener('input', drawTexture));
+        [kindInput, faceInput].forEach(input => input.addEventListener('change', drawTexture));
+        drawTexture();
+    </script>
+</body>
+</html>
