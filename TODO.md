@@ -7,4 +7,5 @@
 - [x] Provide Settings access from the left Menu button.
 - [x] Preserve inventory, world save/load, and marketplace metadata behavior.
 - [x] Provide the crafting recipe reference panel through B/Y controls.
+- [x] Show a persistent, interactive VR MENU toolbar after entering immersive VR, with Settings, Inventory, Recipes, Resume, and Exit VR actions.
 - [x] Publish the tested build with route declarations for all HTML pages.
