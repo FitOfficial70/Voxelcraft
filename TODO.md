@@ -1,6 +1,6 @@
 # Voxelcraft VR — Delivery Checklist
 
-- [x] Publish the browser-based WebGL voxel world as a permanent private static website.
+- [x] Publish the browser-based WebGL voxel world as a permanent private server-backed website.
 - [x] Preserve immersive WebXR gameplay for compatible VR headsets and non-VR browser presentation.
 - [x] Support Quest-style controls: left thumbstick movement, A jump, left trigger place, and right trigger destroy.
 - [x] Provide a flat 2D DOM menu overlay accessible from VR.
@@ -9,5 +9,11 @@
 - [x] Provide the crafting recipe reference panel through B/Y controls.
 - [x] Show a persistent, interactive VR MENU toolbar after entering immersive VR, with Settings, Inventory, Recipes, Resume, and Exit VR actions.
 - [x] Provide touch-friendly mobile movement buttons plus Inventory, Pause, Break, Place, and Jump buttons, with mobile-device detection that works when touch capability is reported differently.
-- [x] Display the current build version and explain that saves are local to the browser and site origin, so Preview and the published site have separate saves.
+- [x] Display the current build version and explain that authenticated worlds use mandatory Cloud Save, with browser storage limited to migration and cache.
 - [x] Publish the tested build with route declarations for all HTML pages.
+- [ ] Require a player account before gameplay with separate Sign In and Sign Up tabs using secure Manus OAuth.
+- [ ] Make Cloud Save mandatory after authentication with no user-facing off switch.
+- [ ] Migrate existing browser worlds into a new account once when that account has no cloud worlds, then load cloud worlds as the account source of truth.
+- [ ] Add authenticated cloud world create, load, update, and delete behavior backed by managed MySQL.
+- [ ] Add Settings account status and confirmed per-world deletion controls.
+- [ ] Replace static-only hosting with the server-backed deployment and preserve private website visibility.

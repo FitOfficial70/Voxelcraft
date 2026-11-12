@@ -72,6 +72,17 @@
         #menu-version { color: #fff; font-size: clamp(14px, 2.5vw, 20px); text-shadow: 2px 2px #000; margin: 0 0 38px; }
         #save-scope-note, #save-status { color: rgba(255,255,255,.82); font-size: 11px; line-height: 1.4; margin: 8px auto 0; max-width: min(480px, calc(100vw - 32px)); text-shadow: 1px 1px #000; }
         #save-status.error { color: #ffb3a7; }
+        #account-panel { width: min(520px, 100%); margin: 0 auto 18px; padding: 14px; background: rgba(0,0,0,.58); border: 2px solid rgba(255,255,255,.72); color: #fff; text-shadow: 1px 1px #000; }
+        #account-panel.authenticated { border-color: #b9f4cd; }
+        #account-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+        #account-tabs .menu-tab { flex: 1; padding: 10px 12px; }
+        #account-message, #account-settings-status { margin: 6px 0; line-height: 1.45; font-size: 12px; }
+        #account-message.error, #account-settings-status.error { color: #ffb3a7; }
+        #account-auth-btn, #account-logout-btn, #account-settings-logout-btn { margin: 8px auto 0; padding: 10px 16px; font-size: 14px; }
+        #account-world-list { display: grid; gap: 8px; margin-top: 12px; }
+        .account-world-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.55); text-align: left; }
+        .account-world-row strong { overflow-wrap: anywhere; }
+        .account-world-row .menu-btn { min-width: 100px; padding: 8px 10px; font-size: 12px; }
         .menu-subtitle { color: #fff; text-shadow: 2px 2px #000; margin: 0 0 24px; }
         .menu-actions { display: grid; gap: 12px; width: min(360px, 100%); margin: 0 auto; }
         .menu-btn {
@@ -196,8 +207,17 @@
     <div id="main-menu">
         <section class="menu-screen" id="home-screen">
             <h1 class="menu-title">VOXELCRAFT</h1>
-            <p id="menu-version">1.4.5.2</p>
+            <p id="menu-version">1.5.0</p>
             <p class="menu-subtitle">Build a world of your own.</p>
+            <div id="account-panel">
+                <div id="account-tabs" role="tablist" aria-label="Account access">
+                    <button class="menu-tab active" id="account-sign-in-tab" type="button" role="tab" aria-selected="true">SIGN IN</button>
+                    <button class="menu-tab" id="account-sign-up-tab" type="button" role="tab" aria-selected="false">SIGN UP</button>
+                </div>
+                <p id="account-message">New players must create an account before playing. Cloud Save is required after sign-in.</p>
+                <button class="menu-btn" id="account-auth-btn" type="button">CONTINUE WITH MANUS</button>
+                <button class="menu-btn secondary" id="account-logout-btn" type="button" hidden>LOG OUT</button>
+            </div>
             <div class="menu-actions">
                 <button class="menu-btn" id="open-play-btn">PLAY</button>
                 <button class="menu-btn secondary" id="open-marketplace-btn">MARKETPLACE</button>
@@ -205,7 +225,7 @@
                 <button class="menu-btn secondary" id="enter-vr-btn" hidden>PLAY IN VR</button>
             </div>
             <p class="menu-subtitle" style="margin: 18px 0 0; font-size: 13px;">Mobile: touch buttons and drag-to-look · VR: WebXR headset and a secure HTTPS page are required</p>
-            <p id="save-scope-note">Worlds and settings save locally in this browser on this site. Preview and the published site use separate saves.</p>
+            <p id="save-scope-note">Account worlds save to Cloud Save. Browser storage is used only for migration and cache; Preview and the published site share account cloud data.</p>
             <p id="save-status" role="status" aria-live="polite">Local save ready</p>
         </section>
         <section class="menu-screen" id="play-screen" hidden>
@@ -219,7 +239,7 @@
                     <div id="world-list" aria-label="Saved worlds"></div>
                     <div class="world-card">
                         <h2 id="world-title">Voxelcraft World</h2>
-                        <p>Your worlds are saved in this browser on this device. Export a backup to keep a separate copy.</p>
+                        <p>Cloud Save is ON and required for this account. Export a backup to keep a separate copy.</p>
                         <div class="world-backup-actions">
                             <button class="menu-btn secondary" id="export-world-btn">EXPORT BACKUP</button>
                             <button class="menu-btn secondary" id="import-world-btn">IMPORT BACKUP</button>
@@ -286,6 +306,13 @@
         </section>
         <section class="menu-screen" id="settings-screen" hidden>
             <h1 class="menu-title">SETTINGS</h1>
+            <div id="account-settings-panel" class="menu-message">
+                <h2 style="margin: 0 0 8px;">ACCOUNT &amp; CLOUD SAVE</h2>
+                <p id="account-settings-status">Checking account...</p>
+                <p>Cloud Save is always ON after account creation and cannot be turned off. Delete individual worlds below; deletion requires confirmation.</p>
+                <div id="account-world-list" aria-label="Cloud worlds"></div>
+                <button class="menu-btn secondary" id="account-settings-logout-btn" type="button" hidden>LOG OUT</button>
+            </div>
             <div class="menu-message">
                 <p>Choose how much terrain loads around you. Larger distances use more memory. This browser build supports up to 4 chunks in each direction. Larger distances load more terrain and use more memory. Thus, it can cause bugs. </p>
                 <div class="chunk-load-setting">
@@ -488,6 +515,213 @@
             saveStatus.textContent = message;
             saveStatus.classList.toggle('error', isError);
         }
+        let accountMode = 'signin';
+        let currentUser = null;
+        let authReady = false;
+        let cloudSaveEnabled = false;
+        let cloudSaveTimer = null;
+        const CLOUD_USER_KEY = 'voxelcraft-cloud-user-v1';
+        const CLOUD_READY_KEY = 'voxelcraft-cloud-ready-v1';
+        const accountPanel = document.getElementById('account-panel');
+        const accountTabs = document.getElementById('account-tabs');
+        const accountMessage = document.getElementById('account-message');
+        const accountAuthBtn = document.getElementById('account-auth-btn');
+        const accountLogoutBtn = document.getElementById('account-logout-btn');
+        const accountSettingsStatus = document.getElementById('account-settings-status');
+        const accountSettingsLogoutBtn = document.getElementById('account-settings-logout-btn');
+
+        function setAccountMessage(message, isError = false) {
+            accountMessage.textContent = message;
+            accountMessage.classList.toggle('error', isError);
+            accountSettingsStatus.textContent = message;
+            accountSettingsStatus.classList.toggle('error', isError);
+        }
+
+        function setAccountMode(mode) {
+            accountMode = mode === 'signup' ? 'signup' : 'signin';
+            const signIn = document.getElementById('account-sign-in-tab');
+            const signUp = document.getElementById('account-sign-up-tab');
+            signIn.classList.toggle('active', accountMode === 'signin');
+            signUp.classList.toggle('active', accountMode === 'signup');
+            signIn.setAttribute('aria-selected', accountMode === 'signin');
+            signUp.setAttribute('aria-selected', accountMode === 'signup');
+            if (currentUser) return;
+            setAccountMessage(accountMode === 'signup'
+                ? 'Create a Manus account to start playing. Cloud Save activates automatically and cannot be turned off.'
+                : 'Sign in with your Manus account to load your cloud worlds.');
+            accountAuthBtn.textContent = accountMode === 'signup' ? 'CREATE ACCOUNT' : 'SIGN IN';
+        }
+
+        function setAccountUI() {
+            const signedIn = Boolean(currentUser);
+            const waiting = !authReady;
+            accountPanel.classList.toggle('authenticated', signedIn);
+            accountAuthBtn.hidden = signedIn;
+            accountLogoutBtn.hidden = !signedIn;
+            accountSettingsLogoutBtn.hidden = !signedIn;
+            accountTabs.hidden = signedIn;
+            document.getElementById('open-play-btn').disabled = waiting || !signedIn;
+            document.getElementById('start-btn').disabled = waiting || !signedIn || !cloudSaveEnabled;
+            document.getElementById('open-create-world-btn').disabled = waiting || !signedIn || !cloudSaveEnabled;
+            if (currentUser) {
+                setAccountMessage(`Signed in as ${currentUser.name || currentUser.email || 'Voxelcraft Player'} · Cloud Save: ON`);
+                accountAuthBtn.textContent = 'ACCOUNT READY';
+            } else if (waiting) {
+                setAccountMessage('Checking account session...');
+            } else {
+                setAccountMode(accountMode);
+            }
+            if (currentUser) renderAccountWorldList();
+        }
+
+        function localWorldSnapshot() {
+            return worlds.map(world => ({
+                id: world.id,
+                name: world.name || world.data?.settings?.name || 'Voxelcraft World',
+                data: world.data || (world.id === activeWorldId ? getWorldSaveData() : {})
+            }));
+        }
+
+        async function fetchCloudWorlds() {
+            const response = await fetch('/api/worlds', { credentials: 'same-origin', cache: 'no-store' });
+            if (!response.ok) throw new Error('Cloud worlds could not be loaded.');
+            return response.json();
+        }
+
+        async function migrateLocalWorlds() {
+            const response = await fetch('/api/worlds/migrate', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ worlds: localWorldSnapshot() })
+            });
+            if (!response.ok) throw new Error('Existing worlds could not be migrated to Cloud Save.');
+            return response.json();
+        }
+
+        async function initializeCloudState() {
+            const userKey = currentUser.openId || currentUser.email || 'account';
+            const previousUser = sessionStorage.getItem(CLOUD_USER_KEY);
+            if (previousUser && previousUser !== userKey) {
+                localStorage.removeItem(WORLDS_KEY);
+                worlds = [{ id: `world-${Date.now()}`, data: null }];
+                activeWorldId = worlds[0].id;
+            }
+            let cloud = await fetchCloudWorlds();
+            const alreadyLoaded = previousUser === userKey && sessionStorage.getItem(CLOUD_READY_KEY) === '1';
+            if (!alreadyLoaded && !cloud.worlds.length && !previousUser) cloud = await migrateLocalWorlds();
+            if (!alreadyLoaded) {
+                localStorage.setItem(WORLDS_KEY, JSON.stringify({ activeWorldId: cloud.worlds[0]?.id || null, worlds: cloud.worlds }));
+                sessionStorage.setItem(CLOUD_USER_KEY, userKey);
+                sessionStorage.setItem(CLOUD_READY_KEY, '1');
+                window.location.reload();
+                return false;
+            }
+            cloudSaveEnabled = true;
+            setSaveStatus('Cloud Save: ON');
+            return true;
+        }
+
+        async function initializeAuth() {
+            setAccountUI();
+            try {
+                const response = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+                if (!response.ok) throw new Error('Account service is unavailable.');
+                const result = await response.json();
+                currentUser = result.authenticated ? result.user : null;
+                authReady = true;
+                if (currentUser) await initializeCloudState();
+                setAccountUI();
+            } catch (error) {
+                currentUser = null;
+                authReady = true;
+                cloudSaveEnabled = false;
+                setAccountMessage(error.message, true);
+                setAccountUI();
+            }
+        }
+
+        function scheduleCloudSave() {
+            if (!cloudSaveEnabled || !currentUser) return;
+            clearTimeout(cloudSaveTimer);
+            cloudSaveTimer = setTimeout(async () => {
+                const activeWorld = worlds.find(world => world.id === activeWorldId);
+                if (!activeWorld) return;
+                try {
+                    const response = await fetch(`/api/worlds/${encodeURIComponent(activeWorld.id)}`, {
+                        method: 'PUT',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: activeWorld.name, data: activeWorld.data })
+                    });
+                    if (!response.ok) throw new Error('Cloud Save failed.');
+                    setSaveStatus('Cloud Save: synced');
+                } catch (error) {
+                    cloudSaveEnabled = false;
+                    setSaveStatus(error.message, true);
+                    setAccountUI();
+                }
+            }, 350);
+        }
+
+        async function logOut() {
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+            localStorage.removeItem(WORLDS_KEY);
+            sessionStorage.removeItem(CLOUD_USER_KEY);
+            sessionStorage.removeItem(CLOUD_READY_KEY);
+            window.location.reload();
+        }
+
+        async function deleteCloudWorld(world) {
+            if (!currentUser || !window.confirm(`Delete “${world.name || 'Voxelcraft World'}” from your account? This cannot be undone.`)) return;
+            const button = document.querySelector(`[data-delete-world="${world.id}"]`);
+            if (button) button.disabled = true;
+            try {
+                const response = await fetch(`/api/worlds/${encodeURIComponent(world.id)}`, { method: 'DELETE', credentials: 'same-origin' });
+                if (!response.ok) throw new Error('The world could not be deleted.');
+                worlds = worlds.filter(entry => entry.id !== world.id);
+                if (!worlds.length) worlds.push({ id: `world-${Date.now()}`, data: null });
+                if (activeWorldId === world.id) activeWorldId = worlds[0].id;
+                localStorage.setItem(WORLDS_KEY, JSON.stringify({ activeWorldId, worlds }));
+                if (activeWorldId !== world.id) saveWorldChanges();
+                renderWorldList();
+                renderAccountWorldList();
+                setAccountMessage('World deleted from your account. Cloud Save remains ON.');
+            } catch (error) {
+                setAccountMessage(error.message, true);
+                if (button) button.disabled = false;
+            }
+        }
+
+        function renderAccountWorldList() {
+            const list = document.getElementById('account-world-list');
+            if (!list) return;
+            list.replaceChildren();
+            if (!currentUser) {
+                list.textContent = 'Sign in to manage cloud worlds.';
+                return;
+            }
+            worlds.forEach(world => {
+                const row = document.createElement('div');
+                row.className = 'account-world-row';
+                const name = document.createElement('strong');
+                name.textContent = world.name || world.data?.settings?.name || 'Voxelcraft World';
+                const remove = document.createElement('button');
+                remove.className = 'menu-btn secondary';
+                remove.type = 'button';
+                remove.textContent = 'DELETE';
+                remove.dataset.deleteWorld = world.id;
+                remove.addEventListener('click', () => deleteCloudWorld(world));
+                row.append(name, remove);
+                list.appendChild(row);
+            });
+        }
+
+        document.getElementById('account-sign-in-tab').addEventListener('click', () => setAccountMode('signin'));
+        document.getElementById('account-sign-up-tab').addEventListener('click', () => setAccountMode('signup'));
+        accountAuthBtn.addEventListener('click', () => { window.location.assign(`/api/auth/start?mode=${accountMode}`); });
+        accountLogoutBtn.addEventListener('click', logOut);
+        accountSettingsLogoutBtn.addEventListener('click', logOut);
         const recipes = document.getElementById('recipes');
         const recipesCloseBtn = document.getElementById('recipes-close-btn');
         const xrPreviousButtons = new WeakMap();
@@ -550,7 +784,7 @@
         }
         document.getElementById('open-play-btn').addEventListener('click', () => showMenuScreen('play-screen'));
         document.getElementById('open-marketplace-btn').addEventListener('click', () => showMenuScreen('marketplace-screen'));
-        document.getElementById('open-settings-btn').addEventListener('click', () => showMenuScreen('settings-screen'));
+        document.getElementById('open-settings-btn').addEventListener('click', () => { renderAccountWorldList(); showMenuScreen('settings-screen'); });
         document.getElementById('play-back-btn').addEventListener('click', () => {
             document.getElementById('world-modifications-content').hidden = true;
             document.getElementById('create-world-content').hidden = true;
@@ -1226,7 +1460,8 @@
                 activeWorld.data = getWorldSaveData();
                 activeWorld.name = worldSettings.name;
                 localStorage.setItem(WORLDS_KEY, JSON.stringify({ activeWorldId, worlds }));
-                setSaveStatus('Saved locally');
+                setSaveStatus(cloudSaveEnabled ? 'Cloud Save: pending' : 'Saved locally');
+                scheduleCloudSave();
             } catch (error) {
                 setSaveStatus('Local save unavailable', true);
                 console.warn('Could not save the world.', error);
@@ -1726,6 +1961,7 @@
                 row.append(name, select);
                 list.appendChild(row);
             });
+            renderAccountWorldList();
         }
 
         function renderWorldModifications() {
@@ -1834,6 +2070,7 @@
         }
 
         function createNewWorld() {
+            if (!currentUser || !cloudSaveEnabled) { showMenuScreen('home-screen'); return; }
             startBackgroundMusic();
             const settings = {
                 name: worldNameInput.value.trim() || 'Voxelcraft World',
@@ -2837,6 +3074,7 @@
             return navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) <= 800;
         }
         startBtn.addEventListener('click', () => {
+            if (!currentUser || !cloudSaveEnabled) { showMenuScreen('home-screen'); setAccountMessage('Sign in and wait for Cloud Save to activate before playing.'); return; }
             getGameAudioContext();
             startBackgroundMusic();
             if (isTouchDevice()) {
@@ -3337,6 +3575,7 @@
             drawFrame(dt);
             requestAnimationFrame(render);
         }
+        initializeAuth();
         requestAnimationFrame(render);
     </script>
 </body>
