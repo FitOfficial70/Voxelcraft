@@ -68,6 +68,12 @@
         .menu-screen[hidden] { display: none; }
         #pause-menu { position: absolute; inset: 0; z-index: 15; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.72); }
         #pause-menu[hidden] { display: none; }
+        #pause-account-tools { position: absolute; top: 16px; right: 16px; z-index: 3; display: flex; align-items: center; gap: 8px; }
+        #pause-account-tools[hidden] { display: none; }
+        #pause-account-btn { display: grid; place-items: center; width: 52px; height: 52px; padding: 4px; border: 3px solid #f1c40f; border-radius: 50%; background: #26343b; box-shadow: 2px 3px 8px #000; cursor: pointer; }
+        #pause-account-btn:hover, #pause-account-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        #pause-account-icon { width: 40px; height: 40px; border-radius: 50%; image-rendering: pixelated; }
+        #pause-settings-shortcut { min-width: 112px; padding: 10px 12px; font-size: 13px; }
         .menu-title { color: #f1c40f; font-size: clamp(38px, 8vw, 76px); line-height: 1; letter-spacing: 3px; text-shadow: 4px 4px 0 #8a5a12, 7px 7px 0 #000; margin: 0 0 8px; }
         #menu-version { color: #fff; font-size: clamp(14px, 2.5vw, 20px); text-shadow: 2px 2px #000; margin: 0 0 38px; }
         #save-scope-note, #save-status { color: rgba(255,255,255,.82); font-size: 11px; line-height: 1.4; margin: 8px auto 0; max-width: min(480px, calc(100vw - 32px)); text-shadow: 1px 1px #000; }
@@ -207,7 +213,7 @@
     <div id="main-menu">
         <section class="menu-screen" id="home-screen">
             <h1 class="menu-title">VOXELCRAFT</h1>
-            <p id="menu-version">1.5.0</p>
+            <p id="menu-version">1.5.1</p>
             <p class="menu-subtitle">Build a world of your own.</p>
             <div id="account-panel">
                 <div id="account-tabs" role="tablist" aria-label="Account access">
@@ -393,6 +399,10 @@
     </div>
     <!-- === PAUSE MENU: RESUME, SETTINGS, AND RETURN TO MAIN MENU === -->
     <div id="pause-menu" role="dialog" aria-label="Game paused" hidden>
+        <div id="pause-account-tools" hidden aria-label="Account tools">
+            <button id="pause-account-btn" type="button" aria-label="Open account settings" title="Open account settings"><img id="pause-account-icon" alt="Account profile icon"></button>
+            <button class="menu-btn secondary" id="pause-settings-shortcut" type="button">SETTINGS</button>
+        </div>
         <section class="menu-screen" id="pause-home-screen">
             <h1 class="menu-title">GAME PAUSED</h1>
             <div class="menu-actions">
@@ -529,6 +539,27 @@
         const accountLogoutBtn = document.getElementById('account-logout-btn');
         const accountSettingsStatus = document.getElementById('account-settings-status');
         const accountSettingsLogoutBtn = document.getElementById('account-settings-logout-btn');
+        const pauseAccountTools = document.getElementById('pause-account-tools');
+        const pauseAccountIcon = document.getElementById('pause-account-icon');
+        const pauseAccountBtn = document.getElementById('pause-account-btn');
+        const pauseSettingsShortcut = document.getElementById('pause-settings-shortcut');
+        const ACCOUNT_AVATARS = [
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#2d8f63"/><path fill="#f4c28e" d="M4 4h8v8H4z"/><path fill="#4b2d22" d="M4 3h8v3H4zM3 5h2v5H3zM11 5h2v5h-2z"/><path fill="#263238" d="M5 7h2v2H5zM9 7h2v2H9zM7 10h2v1H7z"/></svg>',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#6c5ce7"/><path fill="#e7b07b" d="M4 5h8v7H4z"/><path fill="#f2df55" d="M3 4h10v3H3zM4 3h8v2H4z"/><path fill="#243447" d="M5 8h2v2H5zM9 8h2v2H9zM7 10h2v1H7z"/></svg>',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#d95f59"/><path fill="#b87850" d="M4 5h8v7H4z"/><path fill="#e8e8e8" d="M3 4h10v3H3zM4 3h8v2H4z"/><path fill="#263238" d="M5 8h2v2H5zM9 8h2v2H9zM7 10h2v1H7z"/></svg>',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#e39b32"/><path fill="#6aa9d8" d="M4 5h8v7H4z"/><path fill="#593c8f" d="M3 4h10v3H3zM4 3h8v2H4z"/><path fill="#263238" d="M5 8h2v2H5zM9 8h2v2H9zM7 10h2v1H7z"/></svg>'
+        ];
+
+        function setAccountIcon() {
+            if (!currentUser) return;
+            const key = `voxelcraft-avatar-${currentUser.openId || currentUser.email || 'account'}`;
+            let index = Number(localStorage.getItem(key));
+            if (!Number.isInteger(index) || index < 0 || index >= ACCOUNT_AVATARS.length) {
+                index = Math.floor(Math.random() * ACCOUNT_AVATARS.length);
+                localStorage.setItem(key, String(index));
+            }
+            pauseAccountIcon.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(ACCOUNT_AVATARS[index])}`;
+        }
 
         function setAccountMessage(message, isError = false) {
             accountMessage.textContent = message;
@@ -556,14 +587,17 @@
             const signedIn = Boolean(currentUser);
             const waiting = !authReady;
             accountPanel.classList.toggle('authenticated', signedIn);
+            accountPanel.hidden = signedIn;
             accountAuthBtn.hidden = signedIn;
             accountLogoutBtn.hidden = !signedIn;
             accountSettingsLogoutBtn.hidden = !signedIn;
             accountTabs.hidden = signedIn;
+            pauseAccountTools.hidden = !signedIn;
             document.getElementById('open-play-btn').disabled = waiting || !signedIn;
             document.getElementById('start-btn').disabled = waiting || !signedIn || !cloudSaveEnabled;
             document.getElementById('open-create-world-btn').disabled = waiting || !signedIn || !cloudSaveEnabled;
             if (currentUser) {
+                setAccountIcon();
                 setAccountMessage(`Signed in as ${currentUser.name || currentUser.email || 'Voxelcraft Player'} · Cloud Save: ON`);
                 accountAuthBtn.textContent = 'ACCOUNT READY';
             } else if (waiting) {
@@ -722,6 +756,8 @@
         accountAuthBtn.addEventListener('click', () => { window.location.assign(`/api/auth/start?mode=${accountMode}`); });
         accountLogoutBtn.addEventListener('click', logOut);
         accountSettingsLogoutBtn.addEventListener('click', logOut);
+        pauseAccountBtn.addEventListener('click', () => showPauseScreen(pauseSettingsScreen));
+        pauseSettingsShortcut.addEventListener('click', () => showPauseScreen(pauseSettingsScreen));
         const recipes = document.getElementById('recipes');
         const recipesCloseBtn = document.getElementById('recipes-close-btn');
         const xrPreviousButtons = new WeakMap();

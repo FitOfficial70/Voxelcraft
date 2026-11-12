@@ -17,4 +17,6 @@
 - [x] Add authenticated cloud world create, load, update, and delete behavior backed by managed MySQL.
 - [x] Add Settings account status and confirmed per-world deletion controls.
 - [x] Stop background music whenever the in-game pause/menu screen is open, and restart it when gameplay resumes.
+- [x] Show a persistent randomized account avatar and Account/Settings controls in the pause menu's top-right corner; clicking the avatar opens pause settings.
+- [x] Hide the Sign In and Sign Up account panel after authentication while keeping account access available from the pause menu.
 - [x] Replace static-only hosting with the server-backed deployment and preserve private website visibility.
