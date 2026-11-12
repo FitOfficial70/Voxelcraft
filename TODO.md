@@ -11,9 +11,10 @@
 - [x] Provide touch-friendly mobile movement buttons plus Inventory, Pause, Break, Place, and Jump buttons, with mobile-device detection that works when touch capability is reported differently.
 - [x] Display the current build version and explain that authenticated worlds use mandatory Cloud Save, with browser storage limited to migration and cache.
 - [x] Publish the tested build with route declarations for all HTML pages.
-- [ ] Require a player account before gameplay with separate Sign In and Sign Up tabs using secure Manus OAuth.
-- [ ] Make Cloud Save mandatory after authentication with no user-facing off switch.
-- [ ] Migrate existing browser worlds into a new account once when that account has no cloud worlds, then load cloud worlds as the account source of truth.
-- [ ] Add authenticated cloud world create, load, update, and delete behavior backed by managed MySQL.
-- [ ] Add Settings account status and confirmed per-world deletion controls.
-- [ ] Replace static-only hosting with the server-backed deployment and preserve private website visibility.
+- [x] Require a player account before gameplay with separate Sign In and Sign Up tabs using secure Manus OAuth.
+- [x] Make Cloud Save mandatory after authentication with no user-facing off switch.
+- [x] Migrate existing browser worlds into a new account once when that account has no cloud worlds, then load cloud worlds as the account source of truth.
+- [x] Add authenticated cloud world create, load, update, and delete behavior backed by managed MySQL.
+- [x] Add Settings account status and confirmed per-world deletion controls.
+- [x] Stop background music whenever the in-game pause/menu screen is open, and restart it when gameplay resumes.
+- [x] Replace static-only hosting with the server-backed deployment and preserve private website visibility.

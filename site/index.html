@@ -3126,6 +3126,8 @@
         function updateGameState() {
             isPointerLocked = document.pointerLockElement === canvas || document.mozPointerLockElement === canvas;
             const gameplayActive = isPointerLocked || isTouchPlaying || Boolean(xrSession);
+            if (gameplayActive && !isGamePaused) startBackgroundMusic();
+            else if (isGamePaused) stopBackgroundMusic();
             mainMenu.style.display = gameplayActive || isInventoryOpen || isGamePaused ? 'none' : 'flex';
             gameHud.style.display = gameplayActive ? 'block' : 'none';
             gameHud.classList.toggle('vr-active', Boolean(xrSession));
