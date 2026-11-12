@@ -9,16 +9,22 @@
         * { box-sizing: border-box; }
         body, html { margin: 0; padding: 0; overflow: hidden; background: #111; font-family: 'Courier New', Courier, monospace; }
         canvas { width: 100vw; height: 100vh; display: block; image-rendering: pixelated; touch-action: none; }
-        #touch-controls { display: none; }
-        #touch-controls button { position: absolute; z-index: 2; pointer-events: auto; border: 2px solid rgba(255,255,255,.8); border-radius: 8px; background: rgba(0,0,0,.58); color: #fff; padding: 10px 12px; font: bold 14px 'Courier New', monospace; }
+        #touch-controls { display: none; position: static; z-index: 40; }
+        #touch-controls.mobile-active { display: block; }
+        #touch-controls button { position: absolute; z-index: 2; pointer-events: auto; min-width: 64px; min-height: 46px; border: 2px solid rgba(255,255,255,.8); border-radius: 8px; background: rgba(0,0,0,.68); color: #fff; padding: 10px 12px; font: bold 14px 'Courier New', monospace; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #touch-controls button:active { background: rgba(40,40,40,.92); transform: scale(.96); }
+        #touch-move-pad { position: absolute; left: 14px; bottom: 92px; width: 148px; height: 148px; pointer-events: none; }
+        #touch-move-pad button { min-width: 46px; min-height: 46px; width: 46px; height: 46px; padding: 0; font-size: 19px; }
+        #touch-move-up { left: 51px; top: 0; }
+        #touch-move-left { left: 0; top: 51px; }
+        #touch-move-down { left: 51px; top: 51px; }
+        #touch-move-right { left: 102px; top: 51px; }
         #touch-inventory-btn { right: 14px; bottom: 74px; }
         #touch-pause-btn { right: 14px; bottom: 18px; }
         #touch-break-btn { right: 14px; bottom: 130px; }
-        #touch-place-btn { right: 14px; bottom: 182px; }
+        #touch-place-btn { right: 14px; bottom: 186px; }
         #touch-jump-btn { left: 14px; bottom: 18px; }
-        #touch-joystick { position: absolute; left: 7vw; bottom: 8vh; width: 100px; height: 100px; border: 2px solid rgba(255,255,255,.48); border-radius: 50%; background: rgba(0,0,0,.2); }
-        #touch-joystick::after { content: ''; position: absolute; width: 34px; height: 34px; left: 31px; top: 31px; border-radius: 50%; background: rgba(255,255,255,.55); }
-        @media (pointer: coarse) {
+        @media (pointer: coarse), (max-width: 800px) {
             #touch-controls { display: block; }
             #hud-help { max-width: 48vw; font-size: 11px; bottom: 12px; }
             #hud-hotbar { bottom: 12px; }
@@ -64,6 +70,8 @@
         #pause-menu[hidden] { display: none; }
         .menu-title { color: #f1c40f; font-size: clamp(38px, 8vw, 76px); line-height: 1; letter-spacing: 3px; text-shadow: 4px 4px 0 #8a5a12, 7px 7px 0 #000; margin: 0 0 8px; }
         #menu-version { color: #fff; font-size: clamp(14px, 2.5vw, 20px); text-shadow: 2px 2px #000; margin: 0 0 38px; }
+        #save-scope-note, #save-status { color: rgba(255,255,255,.82); font-size: 11px; line-height: 1.4; margin: 8px auto 0; max-width: min(480px, calc(100vw - 32px)); text-shadow: 1px 1px #000; }
+        #save-status.error { color: #ffb3a7; }
         .menu-subtitle { color: #fff; text-shadow: 2px 2px #000; margin: 0 0 24px; }
         .menu-actions { display: grid; gap: 12px; width: min(360px, 100%); margin: 0 auto; }
         .menu-btn {
@@ -188,7 +196,7 @@
     <div id="main-menu">
         <section class="menu-screen" id="home-screen">
             <h1 class="menu-title">VOXELCRAFT</h1>
-            <p id="menu-version">1.4.5.1</p>
+            <p id="menu-version">1.4.5.2</p>
             <p class="menu-subtitle">Build a world of your own.</p>
             <div class="menu-actions">
                 <button class="menu-btn" id="open-play-btn">PLAY</button>
@@ -196,7 +204,9 @@
                 <button class="menu-btn secondary" id="open-settings-btn">SETTINGS</button>
                 <button class="menu-btn secondary" id="enter-vr-btn" hidden>PLAY IN VR</button>
             </div>
-            <p class="menu-subtitle" style="margin: 18px 0 0; font-size: 13px;">Mobile: touch controls · VR: WebXR headset and a secure HTTPS page are required</p>
+            <p class="menu-subtitle" style="margin: 18px 0 0; font-size: 13px;">Mobile: touch buttons and drag-to-look · VR: WebXR headset and a secure HTTPS page are required</p>
+            <p id="save-scope-note">Worlds and settings save locally in this browser on this site. Preview and the published site use separate saves.</p>
+            <p id="save-status" role="status" aria-live="polite">Local save ready</p>
         </section>
         <section class="menu-screen" id="play-screen" hidden>
             <h1 class="menu-title">PLAY</h1>
@@ -341,7 +351,12 @@
         <div id="hud-help">Keyboard controls are configurable in Settings · 1–9: select hotbar · Left-click: break · Right-click: place. Touch: drag left to move, drag right to look.</div>
         <div class="inventory-grid" id="hud-hotbar" aria-label="Hotbar"></div>
         <div id="touch-controls" hidden>
-            <div id="touch-joystick" aria-hidden="true"></div>
+            <div id="touch-move-pad" role="group" aria-label="Movement buttons">
+                <button id="touch-move-up" type="button" data-touch-move="w" aria-label="Move forward">▲</button>
+                <button id="touch-move-left" type="button" data-touch-move="a" aria-label="Move left">◀</button>
+                <button id="touch-move-down" type="button" data-touch-move="s" aria-label="Move backward">▼</button>
+                <button id="touch-move-right" type="button" data-touch-move="d" aria-label="Move right">▶</button>
+            </div>
             <button id="touch-inventory-btn" type="button">INVENTORY</button>
             <button id="touch-pause-btn" type="button">PAUSE</button>
             <button id="touch-break-btn" type="button">BREAK</button>
@@ -467,6 +482,12 @@
         const multiplayerContent = document.getElementById('multiplayer-content');
         const enterVrBtn = document.getElementById('enter-vr-btn');
         const touchControls = document.getElementById('touch-controls');
+        const saveStatus = document.getElementById('save-status');
+        function setSaveStatus(message, isError = false) {
+            if (!saveStatus) return;
+            saveStatus.textContent = message;
+            saveStatus.classList.toggle('error', isError);
+        }
         const recipes = document.getElementById('recipes');
         const recipesCloseBtn = document.getElementById('recipes-close-btn');
         const xrPreviousButtons = new WeakMap();
@@ -1205,7 +1226,9 @@
                 activeWorld.data = getWorldSaveData();
                 activeWorld.name = worldSettings.name;
                 localStorage.setItem(WORLDS_KEY, JSON.stringify({ activeWorldId, worlds }));
+                setSaveStatus('Saved locally');
             } catch (error) {
+                setSaveStatus('Local save unavailable', true);
                 console.warn('Could not save the world.', error);
             }
         }
@@ -1220,6 +1243,7 @@
         let xrPreviousTimestamp = 0;
         const xrButtonStates = new Map();
         const activeTouchPointers = new Map();
+        const activeTouchMovePointers = new Map();
         let cameraYaw = 0;
         let cameraPitch = 0;
         let velocityY = 0;
@@ -2809,10 +2833,13 @@
         canvas.addEventListener('contextmenu', event => event.preventDefault());
 
         // === POINTER LOCK, KEYBOARD, AND INVENTORY CONTROLS ===
+        function isTouchDevice() {
+            return navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) <= 800;
+        }
         startBtn.addEventListener('click', () => {
             getGameAudioContext();
             startBackgroundMusic();
-            if (matchMedia('(pointer: coarse)').matches) {
+            if (isTouchDevice()) {
                 isTouchPlaying = true;
                 updateGameState();
                 return;
@@ -2865,11 +2892,13 @@
             gameHud.style.display = gameplayActive ? 'block' : 'none';
             gameHud.classList.toggle('vr-active', Boolean(xrSession));
             touchControls.hidden = !isTouchPlaying;
+            touchControls.classList.toggle('mobile-active', isTouchPlaying);
             inventory.style.display = isInventoryOpen ? 'flex' : 'none';
             recipes.classList.toggle('open', recipes.classList.contains('open'));
             pauseMenu.hidden = !isGamePaused || isPointerLocked;
             if (!gameplayActive || isInventoryOpen || isGamePaused) {
                 Object.keys(keys).forEach(key => keys[key] = false);
+                clearTouchMoveKeys();
             }
             if (!gameplayActive) saveWorldChanges();
         }
@@ -2886,6 +2915,32 @@
         const touchJumpButton = document.getElementById('touch-jump-btn');
         touchJumpButton.addEventListener('pointerdown', event => { keys.space = true; event.preventDefault(); });
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => touchJumpButton.addEventListener(type, () => { keys.space = false; }));
+        const touchMoveButtons = [...document.querySelectorAll('[data-touch-move]')];
+        function releaseTouchMove(event) {
+            const action = activeTouchMovePointers.get(event.pointerId);
+            if (!action) return;
+            activeTouchMovePointers.delete(event.pointerId);
+            if (![...activeTouchMovePointers.values()].includes(action)) keys[action] = false;
+            event.preventDefault();
+        }
+        function clearTouchMoveKeys() {
+            activeTouchMovePointers.clear();
+            keys.w = keys.a = keys.s = keys.d = false;
+        }
+        touchMoveButtons.forEach(button => {
+            button.addEventListener('pointerdown', event => {
+                if (!isTouchPlaying || isInventoryOpen || isGamePaused) return;
+                const action = button.dataset.touchMove;
+                activeTouchMovePointers.set(event.pointerId, action);
+                keys[action] = true;
+                button.setPointerCapture?.(event.pointerId);
+                event.preventDefault();
+            });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => button.addEventListener(type, releaseTouchMove));
+        });
+        window.addEventListener('pointerup', releaseTouchMove);
+        window.addEventListener('pointercancel', releaseTouchMove);
+        window.addEventListener('blur', clearTouchMoveKeys);
         document.getElementById('inventory-close-btn').addEventListener('click', () => {
             isInventoryOpen = false;
             updateGameState();
